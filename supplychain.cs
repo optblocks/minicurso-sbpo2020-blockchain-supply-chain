@@ -11,28 +11,23 @@ namespace Neo.SmartContract
     public class SupplyChainNFTs : Framework.SmartContract
     {
         [DisplayName("Transfer")]
-        public static event Action<byte[], byte[], BigInteger, byte[], byte[]> TransferNotify;
+        public static event Action<byte[], byte[], BigInteger, string, string> TransferNotify;
 
         [DisplayName("MintToken")]
-        public static event Action<byte[], byte[], byte[]> MintTokenNotify;
+        public static event Action<byte[], string, string> MintTokenNotify;
         
         private static StorageContext Context() => Storage.CurrentContext;
 
-        private const byte Prefix_TotalSupply = 10;
-
+        private static readonly byte[] Prefix_TotalSupplyBA = new byte[] { 10 };
         private static readonly byte[] Prefix_TokenOwnerBA = new byte[] { 11 };
-        private static readonly byte[] Prefix_TokensOfBA = new byte[] { 14 };
-        private static readonly byte[] Prefix_PropertiesBA = new byte[] { 13 };
         private static readonly byte[] Prefix_TokenBalanceBA = new byte[] { 12 };
-            
+        private static readonly byte[] Prefix_PropertiesBA = new byte[] { 13 };
+        private static readonly byte[] Prefix_TokensOfBA = new byte[] { 14 };
+        
         private const int TOKEN_DECIMALS = 8;
         private const int FACTOR = 100_000_000;
         private static readonly byte[] superAdmin = Helper.ToScriptHash("AK2nJJpJr6o664CWJKi1QRXjqeic2zRp8y");
         
-        [DisplayName("transfer")]
-        public static event Action<byte[], byte[], BigInteger> Transferred;
-
-
         public static Object Main(string operation, params object[] args)
         {
             if (operation == "mintNFT") return MintNFT((byte[])args[0],(byte[])args[1],(byte[])args[2]);
@@ -62,7 +57,6 @@ namespace Neo.SmartContract
             tokenOwnerMap.Put(owner, owner);
             tokenOfMap.Put(tokenId, tokenId);
             
-            byte[] Prefix_TotalSupplyBA = new byte[] { Prefix_TotalSupply };
             var totalSupply = Storage.Get(Context(), Prefix_TotalSupplyBA);
             if (totalSupply is null)
                 Storage.Put(Context(), Prefix_TotalSupplyBA, FACTOR);
@@ -73,7 +67,7 @@ namespace Neo.SmartContract
             StorageMap tokenBalanceMap = Storage.CurrentContext.CreateMap(key4.AsString());
             tokenBalanceMap.Put(tokenId, FACTOR);
             
-            MintTokenNotify(owner, tokenId, historic);
+            MintTokenNotify(owner, tokenId.AsString(), historic.AsString());
             
             return true;
         }
@@ -86,7 +80,7 @@ namespace Neo.SmartContract
             
             if (from.Equals(to))
             {
-                TransferNotify(from, to, amount, tokenId, reason);
+                TransferNotify(from, to, amount, tokenId.AsString(), reason.AsString());
                 return true;
             }
 
@@ -118,7 +112,7 @@ namespace Neo.SmartContract
                 toTokenBalanceMap.Put(tokenId, toTokenBalance.ToBigInteger() + amount);
             }
             // Notify
-            TransferNotify(from, to, amount, tokenId, reason);
+            TransferNotify(from, to, amount, tokenId.AsString(), reason.AsString());
             return true;
         }
 
