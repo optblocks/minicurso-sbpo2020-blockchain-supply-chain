@@ -8,7 +8,7 @@ using Helper = Neo.SmartContract.Framework.Helper;
 
 namespace Neo.SmartContract
 {
-    public class ICO_Template : Framework.SmartContract
+    public class SupplyChainNFTs : Framework.SmartContract
     {
         [DisplayName("Transfer")]
         public static event Action<byte[], byte[], BigInteger, byte[], byte[]> TransferNotify;
@@ -37,6 +37,7 @@ namespace Neo.SmartContract
         {
             if (operation == "mintNFT") return MintNFT((byte[])args[0],(byte[])args[1],(byte[])args[2]);
             if (operation == "transfer") return Transfer((byte[])args[0],(byte[])args[1],(BigInteger)args[2],(byte[])args[3],(byte[])args[4]);
+            if (operation == "balanceOf") return  BalanceOf((byte[])args[0],(byte[])args[1]);
             
             return false;
         }
@@ -89,7 +90,6 @@ namespace Neo.SmartContract
                 return true;
             }
 
-
             StorageMap fromTokenBalanceMap = Storage.CurrentContext.CreateMap(Prefix_TokenBalanceBA.Concat(from).AsString());
             StorageMap toTokenBalanceMap = Storage.CurrentContext.CreateMap(Prefix_TokenBalanceBA.Concat(to).AsString());
             StorageMap tokenOwnerMap = Storage.CurrentContext.CreateMap(Prefix_TokenOwnerBA.Concat(tokenId).AsString());
@@ -122,5 +122,20 @@ namespace Neo.SmartContract
             return true;
         }
 
+        public static BigInteger BalanceOf(byte[] owner, byte[] tokenid)
+        {
+            if (owner.Length != 20) throw new FormatException("The parameter 'owner' should be 20-byte address.");
+            byte[] key = Prefix_TokenBalanceBA.Concat(owner);
+            if (tokenid is null)
+            {
+                var iterator = Storage.Find(Context(), key.AsString());
+                BigInteger result = 0;
+                while (iterator.Next())
+                    result += iterator.Value.ToBigInteger();
+                return result;
+            }
+            else
+                return Storage.CurrentContext.CreateMap(key.AsString()).Get(tokenid).ToBigInteger();
+        }
     }
 }
