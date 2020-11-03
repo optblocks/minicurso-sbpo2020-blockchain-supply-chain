@@ -16,6 +16,9 @@ namespace Neo.SmartContract
         [DisplayName("MintToken")]
         public static event Action<byte[], string, string> MintTokenNotify;
         
+        [DisplayName("NotificaEvent")]
+        public static event Action<byte[], BigInteger, string, string> NotificaEvent;
+        
         private static StorageContext Context() => Storage.CurrentContext;
 
         private static readonly byte[] Prefix_TotalSupplyBA = new byte[] { 10 };
@@ -33,6 +36,7 @@ namespace Neo.SmartContract
             if (operation == "mintNFT") return MintNFT((byte[])args[0],(byte[])args[1],(byte[])args[2]);
             if (operation == "transfer") return Transfer((byte[])args[0],(byte[])args[1],(BigInteger)args[2],(byte[])args[3],(byte[])args[4]);
             if (operation == "balanceOf") return  BalanceOf((byte[])args[0],(byte[])args[1]);
+            if (operation == "notifica") return  Notifica((byte[])args[0],(byte[])args[1],(byte[])args[2]);
             
             return false;
         }
@@ -77,12 +81,6 @@ namespace Neo.SmartContract
             if (from.Length != 20 || to.Length != 20) throw new FormatException("The parameters 'from' and 'to' should be 20-byte addresses.");
             if (amount < 0 || amount > FACTOR) throw new FormatException("The parameters 'amount' is out of range.");
             if (!Runtime.CheckWitness(from)) return false;
-            
-            if (from.Equals(to))
-            {
-                TransferNotify(from, to, amount, tokenId.AsString(), reason.AsString());
-                return true;
-            }
 
             StorageMap fromTokenBalanceMap = Storage.CurrentContext.CreateMap(Prefix_TokenBalanceBA.Concat(from).AsString());
             StorageMap toTokenBalanceMap = Storage.CurrentContext.CreateMap(Prefix_TokenBalanceBA.Concat(to).AsString());
@@ -130,6 +128,22 @@ namespace Neo.SmartContract
             }
             else
                 return Storage.CurrentContext.CreateMap(key.AsString()).Get(tokenid).ToBigInteger();
+        }
+        
+        public static bool Notifica(byte[] owner, byte[] tokenId, byte[] info)
+        {
+            if (owner.Length != 20) throw new FormatException("The parameter 'owner' should be 20-byte address.");
+            if (!Runtime.CheckWitness(owner)) return false;
+            StorageMap fromTokenBalanceMap = Storage.CurrentContext.CreateMap(Prefix_TokenBalanceBA.Concat(owner).AsString());
+            var fromTokenBalance = fromTokenBalanceMap.Get(tokenId);
+            if (fromTokenBalance == null)
+            {
+                Runtime.Notify("Token not found for this owner");
+                return false;
+            }
+            
+            NotificaEvent(owner, fromTokenBalance.ToBigInteger(), tokenId.AsString(), info.AsString());
+            return true;
         }
     }
 }
